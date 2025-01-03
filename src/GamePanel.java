@@ -20,7 +20,7 @@ public class GamePanel extends JPanel implements Runnable {
     int gridHeight;
     int moleculeScale = 4;
 
-    Byte[][] grid;
+    Molecule[][] grid;
 
     BufferedImage image;
     HashMap<Byte, Molecule> Molecules = Molecule.InitializeMolecules();
@@ -37,9 +37,10 @@ public class GamePanel extends JPanel implements Runnable {
         this.height = height;
         this.gridWidth = width / moleculeScale;
         this.gridHeight = height / moleculeScale;
-        grid = new Byte[gridWidth][gridHeight];
-        for (Byte[] row : grid)
-            Arrays.fill(row, (byte) 0);
+        Molecule defaultMolecule = Molecules.get((byte)0);  
+        grid = new Molecule[gridWidth][gridHeight];      
+        for (Molecule[] row : grid)
+            Arrays.fill(row, defaultMolecule);
         image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
     }
 
@@ -102,9 +103,18 @@ public class GamePanel extends JPanel implements Runnable {
                         int x = gridPoint.x - xOffset;
                         int y = gridPoint.y - yOffset;
                         int r = rand.nextInt(gridRadius);
-                        if (r > 0 && isValidPointOnGrid(x, y)
+                        int r2 = rand.nextInt(100);
+                        if (r < gridRadius / 2 && isValidPointOnGrid(x, y)
                                 && xOffset * xOffset + yOffset * yOffset <= gridRadius * gridRadius) {
-                            grid[x][y] = mouseHandler.SelectedMolecule;
+                            Molecule mol = Molecules.get(mouseHandler.SelectedMolecule).Clone();
+                            mol.Random = r2;
+                            if(mol.Random < 10){
+                                mol.Color = mol.Color.darker();
+                            } else if (mol.Random > 90){
+                                mol.Color = mol.Color.brighter();
+                            }
+                            grid[x][y] = mol;
+                            System.out.println(mol.Color);
                         }
                     }
                 }
@@ -115,9 +125,8 @@ public class GamePanel extends JPanel implements Runnable {
     private void updateImage() {
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
-                Byte cell = grid[x / moleculeScale][y / moleculeScale];
-                if (cell != null) {
-                    Molecule mol = Molecules.get(cell);
+                Molecule mol = grid[x / moleculeScale][y / moleculeScale];
+                if (mol != null) {
                     // Draw on image
                     image.setRGB(x, y, mol.Color.getRGB());
                 } else {
@@ -140,59 +149,57 @@ public class GamePanel extends JPanel implements Runnable {
     }
 
     private void updateGravity(){
-        Byte[][] nextGrid = new Byte[gridWidth][gridHeight];
+        Molecule[][] nextGrid = new Molecule[gridWidth][gridHeight];
 
         for (int x = 0; x < gridWidth; x++) {
             for (int y = 0; y < gridHeight; y++) {
 
                 if (nextGrid[x][y] == null) {
 
-                    Byte cell = grid[x][y];
-                    Molecule mol = Molecules.get(cell);
+                    Molecule mol = grid[x][y];
+                    Molecule moleculeBelow = isValidPointOnGrid(x, y + 1) ? grid[x][y + 1] : null;
 
-                    Molecule moleculeBelow = isValidPointOnGrid(x, y + 1) ? Molecules.get(grid[x][y + 1]) : null;
-
-                    Molecule moleculeBelowLeft = isValidPointOnGrid(x - 1, y + 1) ? Molecules.get(grid[x - 1][y + 1])
+                    Molecule moleculeBelowLeft = isValidPointOnGrid(x - 1, y + 1) ? grid[x - 1][y + 1]
                             : null;
-                    Molecule moleculeBelowRight = isValidPointOnGrid(x + 1, y + 1) ? Molecules.get(grid[x + 1][y + 1])
+                    Molecule moleculeBelowRight = isValidPointOnGrid(x + 1, y + 1) ? grid[x + 1][y + 1]
                             : null;
 
-                    Molecule moleculeLeft = x - 1 >= 0 ? Molecules.get(grid[x - 1][y]) : null;
-                    Molecule moleculeRight = x + 1 < gridWidth ? Molecules.get(grid[x + 1][y]) : null;
+                    Molecule moleculeLeft = x - 1 >= 0 ? grid[x - 1][y] : null;
+                    Molecule moleculeRight = x + 1 < gridWidth ? grid[x + 1][y] : null;
 
                     // gravity
-                    if (moleculeBelow != null && moleculeBelow.flows && mol.Density > moleculeBelow.Density) {
-                        nextGrid[x][y] = moleculeBelow.ID;
-                        nextGrid[x][y + 1] = mol.ID;
-                    } else if (moleculeBelowLeft != null && moleculeBelowLeft.flows && mol.Density > moleculeBelowLeft.Density) {
-                        nextGrid[x][y] = moleculeBelowLeft.ID;
-                        nextGrid[x - 1][y + 1] = mol.ID;
+                    if (moleculeBelow != null && moleculeBelow.Flows && mol.Density > moleculeBelow.Density) {
+                        nextGrid[x][y] = moleculeBelow;
+                        nextGrid[x][y + 1] = mol;
+                    } else if (moleculeBelowLeft != null && moleculeBelowLeft.Flows && mol.Density > moleculeBelowLeft.Density) {
+                        nextGrid[x][y] = moleculeBelowLeft;
+                        nextGrid[x - 1][y + 1] = mol;
                     }
-                    else if (moleculeBelowRight != null && moleculeBelowRight.flows
+                    else if (moleculeBelowRight != null && moleculeBelowRight.Flows
                             && mol.Density > moleculeBelowRight.Density) {
-                        nextGrid[x][y] = moleculeBelowRight.ID;
-                        nextGrid[x + 1][y + 1] = mol.ID;
-                    } else if (mol.flows) {
+                        nextGrid[x][y] = moleculeBelowRight;
+                        nextGrid[x + 1][y + 1] = mol;
+                    } else if (mol.Flows) {
                         short dir = 0;
                         //int r = rand.nextInt(3);
                         /*
                          * If there is space on both sides we want it to not go in one direction without bias
                          */
-                        if(moleculeLeft != null && moleculeLeft.flows && mol.Density > moleculeLeft.Density && nextGrid[x-1][y] == null){
+                        if(moleculeLeft != null && moleculeLeft.Flows && mol.Density > moleculeLeft.Density && nextGrid[x-1][y] == null){
                             dir -= 1;
                         }
-                        if(moleculeRight != null && moleculeRight.flows && mol.Density > moleculeRight.Density && nextGrid[x+1][y] == null){
+                        if(moleculeRight != null && moleculeRight.Flows && mol.Density > moleculeRight.Density && nextGrid[x+1][y] == null){
                             dir +=1;
                         }
 
                         switch(dir){
                             case -1:
-                                nextGrid[x][y] = moleculeLeft.ID;
-                                nextGrid[x - 1][y] = mol.ID;
+                                nextGrid[x][y] = moleculeLeft;
+                                nextGrid[x - 1][y] = mol;
                                 break;
                             case 1:
-                                nextGrid[x][y] = moleculeRight.ID;
-                                nextGrid[x + 1][y] = mol.ID;
+                                nextGrid[x][y] = moleculeRight;
+                                nextGrid[x + 1][y] = mol;
                                 break;
                                 
                         }
@@ -211,10 +218,6 @@ public class GamePanel extends JPanel implements Runnable {
         }
 
         grid = nextGrid;
-    }
-
-    private void createUI() {
-
     }
 
     private Point screenToGrid(Point screenPoint) {

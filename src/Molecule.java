@@ -4,18 +4,24 @@ import java.awt.Color;
 public class Molecule {
     public final byte ID;
     public final String Name;
-    public final Color Color;
-    public final float Density;
-    public final boolean flammable;
-    public final boolean flows; // -1 = infinite
+    public Color Color;
+    public float Density;
+    public final boolean Flammable;
+    public final boolean Flows;
+    public int Random;
 
     public Molecule(byte id, String name, Color color, float density, boolean flammable, boolean flows){
         this.ID = id;
         this.Name = name;
         this.Color = color;
         this.Density = density;
-        this.flammable = flammable;
-        this.flows = flows;
+        this.Flammable = flammable;
+        this.Flows = flows;
+        Random = -1;
+    }
+
+    public Molecule Clone(){
+        return new Molecule(this.ID, this.Name, this.Color, this.Density, this.Flammable, this.Flows);
     }
 
     public static HashMap<Byte, Molecule> InitializeMolecules(){
