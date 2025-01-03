@@ -4,6 +4,6 @@ Inspired by the old "Sandbox" flash games.
 
 Controls:
 
-Left Click: Paint \n
+Left Click: Paint
 Right Click: Switch "Molecules"
 Mousehweel: Change brush size
