@@ -39,7 +39,7 @@ public class GamePanel extends JPanel implements Runnable {
         this.gridHeight = height / moleculeScale;
         grid = new Byte[gridWidth][gridHeight];
         for (Byte[] row : grid)
-            Arrays.fill(row, (byte)0);
+            Arrays.fill(row, (byte) 0);
         image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
     }
 
@@ -101,7 +101,7 @@ public class GamePanel extends JPanel implements Runnable {
                     for (int yOffset = -gridRadius; yOffset <= gridRadius; yOffset++) {
                         int x = gridPoint.x - xOffset;
                         int y = gridPoint.y - yOffset;
-                        int r = rand.nextInt(3);
+                        int r = rand.nextInt(gridRadius);
                         if (r > 0 && isValidPointOnGrid(x, y)
                                 && xOffset * xOffset + yOffset * yOffset <= gridRadius * gridRadius) {
                             grid[x][y] = mouseHandler.SelectedMolecule;
@@ -116,7 +116,7 @@ public class GamePanel extends JPanel implements Runnable {
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
                 Byte cell = grid[x / moleculeScale][y / moleculeScale];
-                if(cell != null){
+                if (cell != null) {
                     Molecule mol = Molecules.get(cell);
                     // Draw on image
                     image.setRGB(x, y, mol.Color.getRGB());
@@ -127,61 +127,94 @@ public class GamePanel extends JPanel implements Runnable {
             }
         }
     }
+
     /*
-     * Updates the physics by creating a new empty grid and filling it. To avoid overwriting we only write data when the field hasnt been touched in the new grid yet.
-     * However when looking to the left we must make an exception otherwise things would never move left (because we traverse the grid left to right)
+     * Updates the physics by creating a new empty grid and filling it. To avoid
+     * overwriting we only write data when the field hasnt been touched in the new
+     * grid yet.
+     * However when looking to the left we must make an exception otherwise things
+     * would never move left (because we traverse the grid left to right)
      */
     private void updatePhysics() {
+        updateGravity();
+    }
+
+    private void updateGravity(){
         Byte[][] nextGrid = new Byte[gridWidth][gridHeight];
 
         for (int x = 0; x < gridWidth; x++) {
             for (int y = 0; y < gridHeight; y++) {
-                Byte cell = grid[x][y];
-                Molecule mol = Molecules.get(cell);
 
-                Molecule moleculeBelow = isValidPointOnGrid(x, y + 1) ? Molecules.get(grid[x][y + 1]) : null;
-                //here we use the new value if there is one to not overwrite it otherwise
-                Molecule moleculeBelowLeft = isValidPointOnGrid(x - 1, y + 1) ? (nextGrid[x - 1][y + 1] == null ? Molecules.get(grid[x - 1][y + 1]) : Molecules.get(nextGrid[x - 1][y + 1]))
-                        : null;
-                Molecule moleculeBelowRight = isValidPointOnGrid(x + 1, y + 1) ? Molecules.get(grid[x + 1][y + 1])
-                        : null;
-                //looking left we want to use the next grid value so we don't overwrite it later
-                Molecule moleculeLeft = x - 1 >= 0 ? Molecules.get(nextGrid[x - 1][y]) : null;
+                if (nextGrid[x][y] == null) {
 
-                Molecule moleculeRight = x + 1 < gridWidth ? Molecules.get(grid[x + 1][y]) : null;
+                    Byte cell = grid[x][y];
+                    Molecule mol = Molecules.get(cell);
 
-            
+                    Molecule moleculeBelow = isValidPointOnGrid(x, y + 1) ? Molecules.get(grid[x][y + 1]) : null;
 
-                //gravity
-                if (moleculeBelow != null && mol.Density > moleculeBelow.Density && nextGrid[x][y+1] == null ) {
-                    nextGrid[x][y] = moleculeBelow.ID;
-                    nextGrid[x][y + 1] = mol.ID;
-                } else if (moleculeBelowLeft != null && mol.Density > moleculeBelowLeft.Density) {
-                    nextGrid[x][y] = moleculeBelowLeft.ID;
-                    nextGrid[x - 1][y + 1] = mol.ID;
-                } else if (moleculeBelowRight != null && mol.Density > moleculeBelowRight.Density && nextGrid[x + 1][y+1] == null) {
-                    nextGrid[x][y] = moleculeBelowRight.ID;
-                    nextGrid[x + 1][y + 1] = mol.ID;
-                } //flow
-                else if ((moleculeBelow != null || y == gridHeight - 1) && mol.flows) {
-                    if (moleculeLeft != null && mol.Density > moleculeLeft.Density) {
-                        nextGrid[x - 1][y] = mol.ID;
-                        nextGrid[x][y] = moleculeLeft.ID;
-                    } else if (moleculeRight != null && mol.Density > moleculeRight.Density && nextGrid[x + 1][y] == null) {
-                        nextGrid[x + 1][y] = mol.ID;
-                        nextGrid[x][y] = moleculeRight.ID;
+                    Molecule moleculeBelowLeft = isValidPointOnGrid(x - 1, y + 1) ? Molecules.get(grid[x - 1][y + 1])
+                            : null;
+                    Molecule moleculeBelowRight = isValidPointOnGrid(x + 1, y + 1) ? Molecules.get(grid[x + 1][y + 1])
+                            : null;
+
+                    Molecule moleculeLeft = x - 1 >= 0 ? Molecules.get(grid[x - 1][y]) : null;
+                    Molecule moleculeRight = x + 1 < gridWidth ? Molecules.get(grid[x + 1][y]) : null;
+
+                    // gravity
+                    if (moleculeBelow != null && moleculeBelow.flows && mol.Density > moleculeBelow.Density) {
+                        nextGrid[x][y] = moleculeBelow.ID;
+                        nextGrid[x][y + 1] = mol.ID;
+                    } else if (moleculeBelowLeft != null && moleculeBelowLeft.flows && mol.Density > moleculeBelowLeft.Density) {
+                        nextGrid[x][y] = moleculeBelowLeft.ID;
+                        nextGrid[x - 1][y + 1] = mol.ID;
+                    }
+                    else if (moleculeBelowRight != null && moleculeBelowRight.flows
+                            && mol.Density > moleculeBelowRight.Density) {
+                        nextGrid[x][y] = moleculeBelowRight.ID;
+                        nextGrid[x + 1][y + 1] = mol.ID;
+                    } else if (mol.flows) {
+                        short dir = 0;
+                        //int r = rand.nextInt(3);
+                        /*
+                         * If there is space on both sides we want it to not go in one direction without bias
+                         */
+                        if(moleculeLeft != null && moleculeLeft.flows && mol.Density > moleculeLeft.Density && nextGrid[x-1][y] == null){
+                            dir -= 1;
+                        }
+                        if(moleculeRight != null && moleculeRight.flows && mol.Density > moleculeRight.Density && nextGrid[x+1][y] == null){
+                            dir +=1;
+                        }
+
+                        switch(dir){
+                            case -1:
+                                nextGrid[x][y] = moleculeLeft.ID;
+                                nextGrid[x - 1][y] = mol.ID;
+                                break;
+                            case 1:
+                                nextGrid[x][y] = moleculeRight.ID;
+                                nextGrid[x + 1][y] = mol.ID;
+                                break;
+                                
+                        }
                     }
                 }
-                
-                
-                if (nextGrid[x][y] == null) {
+            }
+        }
+
+        //Update the ones not moved so they dont get in the way
+        for (int x = 0; x < gridWidth; x++) {
+            for (int y = 0; y < gridHeight; y++) { 
+                if(nextGrid[x][y] == null){
                     nextGrid[x][y] = grid[x][y];
                 }
-
             }
         }
 
         grid = nextGrid;
+    }
+
+    private void createUI() {
+
     }
 
     private Point screenToGrid(Point screenPoint) {

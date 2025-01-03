@@ -6,7 +6,7 @@ public class App {
         window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         window.setResizable(false);
         window.setTitle("Sand");
-        GamePanel gamePanel = new GamePanel(1600, 800);
+        GamePanel gamePanel = new GamePanel(1600,800);
         window.add(gamePanel);
         window.pack();
 
